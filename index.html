@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organic Chemistry Quiz</title>
+    <style>
+        :root {
+            --choice-red: #f75c6c;
+            --correct-green: #0c9e67;
+            --timer-orange: #ff9800; /* Midtone Orange */
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #000;
+            font-family: 'Arial Black', Gadget, sans-serif;
+        }
+
+        #quiz-app {
+            width: 360px;
+            height: 640px;
+            position: relative;
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
+                        url('blue_quiz-reels.png') center/cover;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; }
+
+        /* HEADER TITLE */
+        .quiz-title {
+            font-size: 2.8rem;
+            color: #fff;
+            text-align: center;
+            text-transform: uppercase;
+            margin-bottom: 60px;
+            text-shadow: 0 0 15px rgba(255,255,255,0.4);
+        }
+
+        /* START BUTTON */
+        .btn-start {
+            padding: 18px 50px;
+            font-size: 1.4rem;
+            background: #f1c40f;
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 900;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* QUESTION BOX */
+        .question-box {
+            background: rgba(255, 255, 255, 0.95);
+            width: 90%;
+            padding: 30px 15px;
+            border-radius: 10px;
+            text-align: center;
+            color: #000;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+
+        #reveal-msg {
+            color: #e67e22;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: none;
+            animation: flash 0.5s infinite alternate;
+        }
+
+        @keyframes flash { from { opacity: 1; } to { opacity: 0.3; } }
+
+        /* CHOICES */
+        .options-list { width: 90%; display: flex; flex-direction: column; gap: 15px; }
+
+        .option-btn {
+            background: var(--choice-red);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .option-btn.correct-reveal {
+            background: var(--correct-green) !important;
+            transform: scale(1.05);
+        }
+
+        /* GLOWING ORANGE TIMER */
+        #timer-container {
+            position: absolute;
+            bottom: 50px;
+            width: 80%;
+            height: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        #timer-bar {
+            width: 100%;
+            height: 100%;
+            background-color: var(--timer-orange);
+            border-radius: 10px;
+            /* The Glowing Effect */
+            box-shadow: 0 0 10px var(--timer-orange), 0 0 20px var(--timer-orange);
+            transition: width 0.1s linear;
+        }
+
+        .honeycomb {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            width: 100px;
+            height: 100px;
+            background-image: radial-gradient(rgba(255,255,255,0.2) 2px, transparent 2px);
+            background-size: 15px 15px;
+        }
+
+        #confetti-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="quiz-app">
+    <div id="start-screen" class="screen">
+        <div class="quiz-title">ORGANIC<br>CHEMISTRY</div>
+        <button class="btn-start" onclick="startGame()">START QUIZ</button>
+        <div class="honeycomb"></div>
+    </div>
+
+    <div id="game-screen" class="screen hidden">
+        <div class="question-box">
+            <div id="question-text"></div>
+            <div id="reveal-msg">THE CORRECT ANSWER IS:</div>
+        </div>
+        <div class="options-list" id="options"></div>
+        
+        <div id="timer-container">
+            <div id="timer-bar"></div>
+        </div>
+    </div>
+
+    <div id="end-screen" class="screen hidden">
+        <h1 id="end-message" style="color:white; text-align:center; text-shadow: 0 0 10px gold;"></h1>
+        <button class="btn-start" onclick="location.reload()">REPLAY</button>
+        <canvas id="confetti-canvas"></canvas>
+    </div>
+</div>
+
+<audio id="buzz-sound" src="https://www.soundjay.com/misc/sounds/fail-buzzer-01.mp3"></audio>
+
+<script>
+    const quizData = [
+        { q: "Which of the following is the simplest hydrocarbon?", a: ["Ethane", "Methane", "Butane"], correct: 1 },
+        { q: "What is the general formula for Alkanes?", a: ["CnH2n", "CnH2n+2", "CnH2n-2"], correct: 1 },
+        { q: "Ethyne is also known as:", a: ["Acetylene", "Ethylene", "Propane"], correct: 0 },
+        { q: "Hydrocarbons with double bonds are:", a: ["Alkanes", "Alkenes", "Alkynes"], correct: 1 },
+        { q: "Benzene is what type of compound?", a: ["Aliphatic", "Aromatic", "Cycloalkane"], correct: 1 },
+        { q: "How many carbons are in Propane?", a: ["2", "3", "4"], correct: 1 },
+        { q: "Which is a saturated hydrocarbon?", a: ["Ethene", "Ethyne", "Ethane"], correct: 2 },
+        { q: "Main component of Natural Gas?", a: ["Methane", "Butane", "Propane"], correct: 0 },
+        { q: "What bond type is in Alkynes?", a: ["Single", "Double", "Triple"], correct: 2 },
+        { q: "C4H10 is the formula for:", a: ["Butene", "Butane", "Pentane"], correct: 1 }
+    ];
+
+    let currentIdx = 0;
+    let score = 0;
+    let timer;
+    let timeLeft;
+    const buzz = document.getElementById('buzz-sound');
+
+    function startGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if (currentIdx >= quizData.length) { showEndScreen(); return; }
+        const data = quizData[currentIdx];
+        document.getElementById('question-text').innerText = data.q;
+        document.getElementById('reveal-msg').style.display = 'none';
+        const optionsEl = document.getElementById('options');
+        optionsEl.innerHTML = '';
+        data.a.forEach((choice, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = choice;
+            btn.onclick = () => handleInput(i);
+            optionsEl.appendChild(btn);
+        });
+        startTimer();
+    }
+
+    function startTimer() {
+        clearInterval(timer);
+        timeLeft = 1000; // 10 seconds
+        const bar = document.getElementById('timer-bar');
+        timer = setInterval(() => {
+            timeLeft--;
+            bar.style.width = (timeLeft / 10) + '%';
+            if (timeLeft <= 0) { clearInterval(timer); buzz.play(); revealCorrect(); }
+        }, 10);
+    }
+
+    function handleInput(selected) {
+        clearInterval(timer);
+        if (selected === quizData[currentIdx].correct) score++; else buzz.play();
+        revealCorrect();
+    }
+
+    function revealCorrect() {
+        const allBtns = document.querySelectorAll('.option-btn');
+        allBtns.forEach(b => b.onclick = null);
+        document.getElementById('reveal-msg').style.display = 'block';
+        allBtns[quizData[currentIdx].correct].classList.add('correct-reveal');
+        setTimeout(() => { currentIdx++; loadQuestion(); }, 3000);
+    }
+
+    function showEndScreen() {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+        const msg = document.getElementById('end-message');
+        if (score === quizData.length) {
+            msg.innerHTML = "CONGRATULATIONS!<br>PERFECT SCORE!";
+            startConfetti();
+        } else {
+            msg.innerHTML = `QUIZ COMPLETE!<br>Score: ${score}/${quizData.length}`;
+        }
+    }
+
+    function startConfetti() {
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 360; canvas.height = 640;
+        let particles = [];
+        for (let i = 0; i < 120; i++) {
+            particles.push({
+                x: Math.random() * 360, y: Math.random() * 640 - 640,
+                r: Math.random() * 6 + 2, d: Math.random() * 100,
+                color: `hsl(${Math.random() * 360}, 100%, 50%)`, tilt: Math.random() * 10 - 10
+            });
+        }
+        function draw() {
+            ctx.clearRect(0, 0, 360, 640);
+            particles.forEach(p => {
+                ctx.beginPath(); ctx.lineWidth = p.r; ctx.strokeStyle = p.color;
+                ctx.moveTo(p.x + p.tilt + p.r / 2, p.y); ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+                ctx.stroke();
+                p.y += Math.cos(p.d) + 1 + p.r / 2; p.tilt = Math.sin(p.d) * 15;
+                if (p.y > 640) p.y = -20;
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    }
+</script>
+
+</body>
+</html>
